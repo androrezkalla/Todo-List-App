@@ -1,59 +1,148 @@
 import supabase from "./supabase";
+import { v4 as uuidv4 } from "uuid";
 
 const getUserBySlug = async (slug) => {
-  const {data, error} = await supabase
+  const { data, error } = await supabase
     .from("profile")
     .select("user_id")
     .eq("slug", slug)
     .limit(1)
     .single();
-    if(error){
-      return {
-        success: false,
-        error
-      }
-    }
-
+  if (error) {
     return {
-      success: true,
-      data
-    }
-    
-}
+      success: false,
+      error,
+    };
+  }
 
-
+  return {
+    success: true,
+    data,
+  };
+};
 
 const getLatestUsers = async (num = 5) => {
   const { data, error } = await supabase
     .from("profile")
     .select("name, slug")
-    .order("created_at", {ascending: false})
+    .order("created_at", { ascending: false })
     .limit(num);
 
-    if(error){
-      return {
-        success: false,
-        error
-      }
-    }
-
+  if (error) {
     return {
-      success: true,
-      data
-    }
+      success: false,
+      error,
+    };
+  }
 
-
-}
-
+  return {
+    success: true,
+    data,
+  };
+};
 
 const logout = async () => {
   const { error } = await supabase.auth.signOut();
   return { success: !error, error };
 };
+const addNewTodoItem = async (user_id, tasks, title, order, completed) => {
+  const { data, error } = await supabase
+    .from("todo_items")
+    .insert([
+      {
+        order,
+        title,
+        user_id,
+        tasks,
+        completed: false,
+      },
+    ]);
+
+  if (error) {
+    return {
+      success: false,
+      error,
+    };
+  }
+
+  return {
+    success: true,
+    message: "Todo item added successfully",
+  };
+};
+
+
+const getTodoItems = async (user_id) => {
+  const { data, error } = await supabase
+    .from("todo_items")
+    .select("*")
+    .eq("user_id", user_id);
+
+  if (error) {
+    return {
+      success: false,
+      error,
+    };
+  }
+
+  return {
+    success: true,
+    data,
+  };
+};
+
+const updateTodoItem = async (id, tasks, title, completed) => {
+  try {
+    // Make an update query to update the todo item
+    const { data, error } = await supabase
+      .from('todo_items')
+      .update({ tasks, title, completed })
+      .eq('id', id);
+
+    // Handle the response and return the updated todo item
+    if (error) {
+      throw error;
+    }
+
+    if (data && data.length > 0) {
+      const updatedItem = data[0];
+      return updatedItem;
+    }
+
+
+  } catch (error) {
+    // Handle the error
+    console.log(error);
+    throw error;
+  }
+};
+
+const deleteTodoItem = async (itemId) => {
+  try {
+    const { data, error } = await supabase
+      .from("todo_items")
+      .delete()
+      .match({ id: itemId });
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    if (data) {
+      return { success: true };
+    } else {
+      throw new Error("Failed to delete todo item.");
+    }
+  } catch (error) {
+    return { success: false, message: error.message };
+  }
+};
+
+
+
 
 const addNewLink = async (user_id, url, title, order, linkType = "link") => {
-  // remove references to linkRequestData, as it is overzealously caching
-  // linkRequestData.data = null;
+  linkRequestData.data = null;
   const insertResponse = await supabase.from("links").insert({
     order,
     title,
@@ -132,16 +221,15 @@ const getCurrentUser = async () => {
     data: null,
   };
 };
-// remove references to linkRequestData, as it is overzealously caching
-// const linkRequestData = {
-//   data: null,
-// };
+const linkRequestData = {
+  data: null,
+};
+
 
 const getLinks = async (userId) => {
-// remove references to linkRequestData, as it is overzealously caching
-// if (linkRequestData.data) {
-//   return linkRequestData.data;
-// }
+  if (linkRequestData.data) {
+    return linkRequestData.data;
+  }
 
   const { data, error } = await supabase
     .from("links")
@@ -153,8 +241,8 @@ const getLinks = async (userId) => {
       error,
     };
   }
-  // remove references to linkRequestData, as it is overzealously caching
-  // linkRequestData.data = { success: true, data };
+
+  linkRequestData.data = { success: true, data };
 
   return { success: true, data };
 };
@@ -324,5 +412,9 @@ export {
   addNewLink,
   logout,
   getLatestUsers,
-  getUserBySlug
+  getUserBySlug,
+  addNewTodoItem,
+  getTodoItems,
+  updateTodoItem,
+  deleteTodoItem,
 };
